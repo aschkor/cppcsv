@@ -2,6 +2,16 @@
 
 namespace cppcsv{
 
+	void remove_double_double_quote(std::string& line){
+		constexpr dd_quote {"\"\""};
+		size_t pos = line.find_first_of(dd_quote);
+
+		while (pos != std::string::npos){
+			line.erase(pos,1);
+			pos++;
+			pos = line.find_first_of(dd_quote);
+		}
+	}
 	template<class ...Ts>
 		bool parser<Ts...>::eof(){
 			if(this->file_.eof())
@@ -22,6 +32,7 @@ namespace cppcsv{
 
 	template <>
 		std::string convert<std::string>(const std::string& cell){
+			remove_double_double_quote(cell);
 			return cell;
 		}
 
@@ -92,7 +103,12 @@ namespace cppcsv{
 			if(p == line.size() - 1)
 				return std::make_optional(p);
 
-			if(line.at(p) != line.at(p + 1))
+			const char c = line.at(p);
+
+			if(p > 0 && c != line.at(p + 1) && c != line.at(p - 1))
+				return std::make_optional(p);
+
+			if(c != line.at(p + 1))
 				return std::make_optional(p);
 
 			p = line.find_first_of('"', p + 2);
@@ -109,7 +125,8 @@ namespace cppcsv{
 			while(pos != std::string::npos){
 				if(std::optional<size_t> double_quote = find_first_double_quote(line, pos)){
 					if(double_quote.value() < pos){
-						pos += 2;
+						pos = find_first_double_quote(line, pos + 1);
+						pos ++;
 						continue;
 					}
 				}
@@ -156,12 +173,5 @@ namespace cppcsv{
 			std::queue<std::string> t { this->split(line) };
 			return parse<Us...>(t);
 		}
-
-	//	template <>
-	//		bool convert<bool>(const std::string& cell){
-	//			bool res = false;
-	//			cell >> std::boolalpha >> res;
-	//			return res;
-	//		}
 }
 
